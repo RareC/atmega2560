@@ -37,20 +37,6 @@ void SPI_data_send(char addr, char dat)
 	PORTB |= 1<<4;                    //disable chip
 }
 
-void flash(char disp[7],char sc)
-{
-	SPI_data_send(0x0C,0x00);               //enter shutdown mode
-	_delay_ms(300);
-	SPI_data_send(0x0C,0x01);               //awaken again
-	SPI_data_send(0x0B, sc);                //set row limit to whatever is defined by sc
-	SPI_data_send(0x0A, 0x04);              //set intensity
-	int i;
-	for(i=0;i<sc;i++)
-	{
-		SPI_data_send((0x01+i),disp[i]);
-	}
-}
-
 void SPI_set_brightness()
 {
 	char pot = ADCH;
@@ -58,16 +44,28 @@ void SPI_set_brightness()
 	SPI_data_send(0x0A,pot);
 }
 
+void flash(char disp[7],char sc)
+{
+	SPI_data_send(0x0C,0x00);               //enter shutdown mode
+	_delay_ms(300);
+	SPI_data_send(0x0C,0x01);               //awaken again
+	SPI_data_send(0x0B, sc);                //set row limit to whatever is defined by sc
+	SPI_set_brightness();
+	int i;
+	for(i=0;i<sc;i++)
+	{
+		SPI_data_send((0x01+i),disp[i]);
+	}
+}
+
 void print_HI(char sc)
 {
 	char H[7]={0x00,0x00,0x7E,0x08,0x08,0x7E,0x00};   //[0] is rightmost column and [7] leftmost, MSB is top row and LSB is bottom row
 	char I[7]={0x00,0x00,0x00,0x00,0x5E,0x00,0x00};   //depends which way around you look at it of course!
 
-	SPI_set_brightness();
 	flash(H,sc);
 	_delay_ms(1000);
 
-	SPI_set_brightness();
 	flash(I,sc);
 	_delay_ms(1000);
 }
@@ -79,23 +77,18 @@ void print_BRITT(char sc)
 	char I[7]={0x00,0x00,0x00,0x00,0x5E,0x00,0x00};
 	char T[7]={0x00,0x00,0x00,0x12,0x7E,0x10,0x00};
 
-	SPI_set_brightness();
 	flash(B,sc);
 	_delay_ms(1000);
 
-	SPI_set_brightness();
 	flash(R,sc);
 	_delay_ms(1000);
 	
-	SPI_set_brightness();
 	flash(I,sc);
 	_delay_ms(1000);
 
-	SPI_set_brightness();
 	flash(T,sc);
 	_delay_ms(1000);
 
-	SPI_set_brightness();
 	flash(T,sc);
 	_delay_ms(1000);
 }
@@ -120,7 +113,7 @@ int main(void)
 	init_adc();
 	_delay_ms(10);
 	SPI_data_send(0x0C, 0x01);              //disable shutdown mode
-	SPI_data_send(0x0A, 0x04);              //set intensity
+	SPI_set_brightness();
 	SPI_clear_all(sc);
 	while (1)
 	{
