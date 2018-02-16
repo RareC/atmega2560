@@ -19,15 +19,15 @@
 enum direction {UP, DOWN, LEFT, RIGHT};	//makes turning more readable
 enum direction dir = RIGHT;			//set default traveling direction
 
-//isr variables
+//ISR variables
 uint8_t has_changed = 0;			//prevents multiple direction changes per step
 
 //Function Prototypes
 void init_buttons();
-void make_snake(uint8_t*,uint8_t*,uint8_t);
+void make_snake(uint8_t*,uint8_t*,uint8_t*,uint8_t);
 void move_snake(uint8_t*,uint8_t*,enum direction);
 void store_moves(uint8_t*,uint8_t*,uint8_t);
-void sum_snake();
+void make_food(uint8_t*,uint8_t*,uint8_t*);
 
 ISR(INT0_vect)							//when right button pressed
 {
@@ -79,19 +79,20 @@ ISR(INT2_vect)							//when left button pressed
 }
 
 int main(void)
-{
-	init_spi();
-	init_buttons();
+{	
+	//global variables
 	uint8_t prev_rows[64];
 	uint8_t prev_cols[64];				//history of previous locations head has been
-	uint8_t *first_row_pos = prev_rows;	//pointer to first element of row history
-	uint8_t *first_col_pos = prev_cols;	//pointer to first element of column history
-	uint8_t grid[8][8];					//positions on matrix
 	uint8_t length = 8;					//length of snake
+	uint8_t food_pos[2] = {0x08,0x08};	//stores where the food will go first element col, second row
 	
+	//starting position
 	prev_cols[0] = 0x05;				//starting column
 	prev_rows[0] = 0x02;				//starting row
 	
+	//initialisation of hardware
+	init_spi();
+	init_buttons();
 	SPI_data_send(shutdown,0x01);		//disable shutdown mode
 	SPI_clear_all(0x07);				//clear all rows and set scan range to all rows
 	SPI_data_send(brightness,0x04);		//set brightness
@@ -99,9 +100,9 @@ int main(void)
     while (1) 
     {
 		has_changed = 0;
-		make_snake(first_col_pos, first_row_pos, length);
-		store_moves(first_col_pos, first_row_pos,length);
-		move_snake(first_col_pos,first_row_pos,dir);
+		make_snake(&prev_cols[0],&prev_rows[0],&food_pos[0],length);
+		store_moves(&prev_cols[0],&prev_rows[0],length);
+		move_snake(&prev_cols[0],&prev_rows[0],dir);
 
     }
 }
@@ -113,25 +114,28 @@ void init_buttons(){
 	EICRA |= (1<< ISC01) | (1<< ISC21);//enable interrupt on falling edge									
 }
 
-void make_snake(uint8_t *col,uint8_t *row, uint8_t len){
+void make_snake(uint8_t *col,uint8_t *row, uint8_t *food, uint8_t len){
 		
 	SPI_clear_all(0x07);
 	//iterate through col array and find entries matching 'i'
 	//sum all rows for each col
 	//send summed row data for each col
-	for(uint8_t i = 0x01; i<=0x08; i++){	//do for each column
+	for(uint8_t i = 0x01; i<=0x08; i++){	//for each column
 		uint8_t row_sum=0;					//resets the sum for each column - saves 7 variables being declared!
 		for(uint8_t j=0; j<len; j++){		//go through each element of the snake
 			if(*(col+j) == i){				//if current element of array has same column as one being checked
-				row_sum += *(row+j);
+				row_sum += *(row+j);		//add to position to light up
 			}
 		}
-		SPI_data_send(i,row_sum);	
+		if(i == (*food)){					//check food location
+			row_sum += *(food+1);			//add light for food
+		}
+		SPI_data_send(i,row_sum);
 	}
 	_delay_ms(500);
 }
 
- void move_snake(uint8_t *col,uint8_t *row,enum direction dir)
+void move_snake(uint8_t *col,uint8_t *row,enum direction dir)
  {
 	cli();															//disable interrupts whilst dir is being used
 	switch (dir){
@@ -180,6 +184,12 @@ void store_moves(uint8_t* col,uint8_t* row ,uint8_t len)
 		*(row+i) = *(row+i-1);
 	}
 }
+
+/*void make_food(uint8_t *food, uint8_t *col, uint8_t *row)
+{
+	//check if currently equal to snake position
+	//extend snake and find new position if yes
+} */
 //Add food
 //Add lose conditions
 //Add win condition
