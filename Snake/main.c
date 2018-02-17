@@ -142,7 +142,7 @@ void make_snake(uint8_t *col,uint8_t *row, uint8_t *food, uint8_t *len){
 		}
 		SPI_data_send(i,row_sum);
 	}
-	_delay_ms(1000);
+	_delay_ms(500);
 }
 
 void move_snake(uint8_t *col,uint8_t *row,enum direction dir)
@@ -208,13 +208,34 @@ void make_food(uint8_t *food, uint8_t *col, uint8_t *row, uint8_t *len_ptr)
 		}
 		*food = new_col;						//set new food column
 		
-		/*uint8_t new_row = rand();			
-		uint8_t i = 0x80;
-		while(~(i & new_row)){					//find MSB of new_row
-			i = i >> 1;
+		uint8_t new_row = rand();				//get random number
+		uint8_t i;								
+		if(new_row<32){							//use which 8th of range to determine row
+			i = 0x01;
 		}
-		*(food+1) = i;							//set new row according to MSB of new_row */
+		else if(new_row<64){
+			i = 0x02;
+		}
+		else if(new_row<96){
+			i = 0x04;
+		}
+		else if(new_row<128){
+			i = 0x08;
+		}
+		else if(new_row<160){
+			i = 0x10;
+		}
+		else if(new_row<192){
+			i = 0x20;
+		}
+		else if(new_row<224){
+			i = 0x40;
+		}
+		else{
+			i = 0x80;
+		}
+		*(food+1) = i;							//set new row according to MSB of new_row 
 } 
-//Add random food spawning
+//check location of random food spawning isn't taken
 //Add lose conditions
 //Add win condition
