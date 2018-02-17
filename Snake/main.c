@@ -31,6 +31,7 @@ void move_snake(uint8_t*,uint8_t*,enum direction,uint8_t);
 void store_moves(uint8_t*,uint8_t*,uint8_t);
 void make_food(uint8_t*,uint8_t*,uint8_t*,uint8_t*);
 uint8_t free_pos(uint8_t*,uint8_t*,uint8_t,uint8_t,uint8_t);
+void clear_moves(uint8_t*,uint8_t*,uint8_t);
 
 ISR(INT0_vect)							//when right button pressed
 {
@@ -157,11 +158,13 @@ void move_snake(uint8_t *col,uint8_t *row,enum direction dir, uint8_t len)
 				*row = *row >> 1;
 				taken = free_pos((col+1), (row+1), *col, *row, len);
 				if (taken){
+					clear_moves(col,row,len);				//clear memory for next game - weird bug fix
 					wdt_enable(WDTO_30MS);					//snake has eaten itself, reset game
 					while(1);
 				}
 				break;
 			}
+			clear_moves(col,row,len);
 			wdt_enable(WDTO_30MS);							//boundary has been hit, reset game
 			while(1);
 			break;
@@ -171,11 +174,13 @@ void move_snake(uint8_t *col,uint8_t *row,enum direction dir, uint8_t len)
 				*row = *row << 1;
 				taken = free_pos((col+1), (row+1), *col, *row, len);
 				if (taken){
+					clear_moves(col,row,len);
 					wdt_enable(WDTO_30MS);					//snake has eaten itself, reset game
 					while(1);
 				}
 				break;
 			}
+			clear_moves(col,row,len);
 			wdt_enable(WDTO_30MS);							//boundary has been hit, reset game
 			while(1);
 			break;
@@ -185,11 +190,13 @@ void move_snake(uint8_t *col,uint8_t *row,enum direction dir, uint8_t len)
 				(*col)++;									//move to column on left
 				taken = free_pos((col+1), (row+1), *col, *row, len);
 				if (taken){
+					clear_moves(col,row,len);
 					wdt_enable(WDTO_30MS);					//snake has eaten itself, reset game
 					while(1);
 				}
 				break;				
 			}
+			clear_moves(col,row,len);
 			wdt_enable(WDTO_30MS);							//boundary has been hit, reset game
 			while(1);
 			break;
@@ -199,11 +206,13 @@ void move_snake(uint8_t *col,uint8_t *row,enum direction dir, uint8_t len)
 				(*col)--;
 				taken = free_pos((col+1), (row+1), *col, *row, len);
 				if (taken){
+					clear_moves(col,row,len);
 					wdt_enable(WDTO_30MS);					//snake has eaten itself, reset game
 					while(1);
 				}
 				break;				
 			}
+			clear_moves(col,row,len);
 			wdt_enable(WDTO_30MS);							//boundary has been hit, reset game
 			while(1);
 			break;
@@ -284,4 +293,12 @@ uint8_t free_pos(uint8_t *col, uint8_t *row, uint8_t check_col, uint8_t check_ro
 		}
 	}
 	return 0;
+}
+
+void clear_moves(uint8_t *col,uint8_t *row,uint8_t len)
+{
+	for(int i=0;i<len;i++){
+		*(col+i) = 0;
+		*(row+i) = 0;
+	}
 }
