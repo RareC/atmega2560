@@ -14,6 +14,7 @@
 #include <util/delay.h>
 #include <avr/interrupt.h>
 #include <stdlib.h>
+#include <avr/wdt.h>
 #include "LEDMatrix.h"
 
 //Enumerated data types - outside of main for ISR
@@ -26,7 +27,7 @@ uint8_t has_changed = 0;			//prevents multiple direction changes per step
 //Function Prototypes
 void init_buttons();
 void make_snake(uint8_t*,uint8_t*,uint8_t*,uint8_t*);
-void move_snake(uint8_t*,uint8_t*,enum direction);
+void move_snake(uint8_t*,uint8_t*,enum direction,uint8_t);
 void store_moves(uint8_t*,uint8_t*,uint8_t);
 void make_food(uint8_t*,uint8_t*,uint8_t*,uint8_t*);
 uint8_t free_pos(uint8_t*,uint8_t*,uint8_t,uint8_t,uint8_t);
@@ -106,7 +107,7 @@ int main(void)
 		has_changed = 0;
 		make_snake(&prev_cols[0],&prev_rows[0],&food_pos[0],&length);
 		store_moves(&prev_cols[0],&prev_rows[0],length);
-		move_snake(&prev_cols[0],&prev_rows[0],dir);
+		move_snake(&prev_cols[0],&prev_rows[0],dir,length);
 
     }
 }
@@ -146,40 +147,65 @@ void make_snake(uint8_t *col,uint8_t *row, uint8_t *food, uint8_t *len){
 	_delay_ms(500);
 }
 
-void move_snake(uint8_t *col,uint8_t *row,enum direction dir)
+void move_snake(uint8_t *col,uint8_t *row,enum direction dir, uint8_t len)
  {
 	cli();															//disable interrupts whilst dir is being used
+	uint8_t taken = 0;
 	switch (dir){
 		case DOWN:
 			if(*row>0x01){
 				*row = *row >> 1;
-				//check if this position is already taken - todo
+				taken = free_pos((col+1), (row+1), *col, *row, len);
+				if (taken){
+					wdt_enable(WDTO_30MS);					//snake has eaten itself, reset game
+					while(1);
+				}
 				break;
 			}
-			//code to end game because boundary was hit
+			wdt_enable(WDTO_30MS);							//boundary has been hit, reset game
+			while(1);
 			break;
 		
 		case UP:
 			if(*row<0x80){
 				*row = *row << 1;
+				taken = free_pos((col+1), (row+1), *col, *row, len);
+				if (taken){
+					wdt_enable(WDTO_30MS);					//snake has eaten itself, reset game
+					while(1);
+				}
 				break;
 			}
-			//code to end game because boundary was hit
+			wdt_enable(WDTO_30MS);							//boundary has been hit, reset game
+			while(1);
 			break;
 		
 		case LEFT:
 			if(*col<0x08){									//do not move left if in leftmost column register
 				(*col)++;									//move to column on left
+				taken = free_pos((col+1), (row+1), *col, *row, len);
+				if (taken){
+					wdt_enable(WDTO_30MS);					//snake has eaten itself, reset game
+					while(1);
+				}
 				break;				
 			}
-			//code to end game because boundary was hit
+			wdt_enable(WDTO_30MS);							//boundary has been hit, reset game
+			while(1);
 			break;
 			
 		case RIGHT:
 			if(*col>0x01){
 				(*col)--;
+				taken = free_pos((col+1), (row+1), *col, *row, len);
+				if (taken){
+					wdt_enable(WDTO_30MS);					//snake has eaten itself, reset game
+					while(1);
+				}
 				break;				
 			}
+			wdt_enable(WDTO_30MS);							//boundary has been hit, reset game
+			while(1);
 			break;
 	}
 	sei();													//re-enable interrupts now we are finished
@@ -198,6 +224,10 @@ void store_moves(uint8_t* col,uint8_t* row ,uint8_t len)
 void make_food(uint8_t *food, uint8_t *col, uint8_t *row, uint8_t *len_ptr)
 {
 	(*len_ptr)++;							//increase length of snake
+	if(*len_ptr == 64){
+		wdt_enable(WDTO_30MS);					//YOU WIN! now do it again
+		while(1);
+	}
 	*(col-1+*(len_ptr)) = 0;				//initialise new member of array to prevent null pointer
 	*(row-1+*(len_ptr)) = 0;
 	uint8_t pos_good = 1;
@@ -209,30 +239,34 @@ void make_food(uint8_t *food, uint8_t *col, uint8_t *row, uint8_t *len_ptr)
 				new_col = 0x08;
 			}
 				
-			uint8_t new_row = rand();				//get random number
-			if(new_row<32){							//use which 8th of range to determine row
-				new_row = 0x01;
-			}
-			else if(new_row<64){
-				new_row = 0x02;
-			}
-			else if(new_row<96){
-				new_row = 0x04;
-			}
-			else if(new_row<128){
-				new_row = 0x08;
-			}
-			else if(new_row<160){
-				new_row = 0x10;
-			}
-			else if(new_row<192){
-				new_row = 0x20;
-			}
-			else if(new_row<224){
-				new_row = 0x40;
-			}
-			else{
-				new_row = 0x80;
+			uint8_t new_row = rand();				//get random number			
+			new_row /= 32;				//sort into range of 1-8
+			switch(new_row)
+			{
+				case 0:
+					new_row = 0x01;
+					break;
+				case 1:
+					new_row = 0x02;
+					break;
+				case 2:
+					new_row = 0x04;
+					break;
+				case 3:
+					new_row = 0x08;
+					break;
+				case 4:
+					new_row = 0x10;
+					break;
+				case 5:
+					new_row = 0x20;
+					break;
+				case 6:
+					new_row = 0x40;
+					break;
+				case 7:
+					new_row = 0x80;
+					break;
 			}
 					
 			*food = new_col;						//set new food column
@@ -245,12 +279,9 @@ uint8_t free_pos(uint8_t *col, uint8_t *row, uint8_t check_col, uint8_t check_ro
 {
 	//iterate through used length of arr
 	for (uint8_t i = 0; i < len; i++){
-		if(  (*(col+i) == check_col) && (*(row+i) == check_row)  ){	//check if food position is taken by snake
+		if(  (*(col+i) == check_col) && (*(row+i) == check_row)  ){	//check if position is taken by snake
 			return 1;
 		}
 	}
 	return 0;
 }
-//check location of random food spawning isn't taken
-//Add lose conditions
-//Add win condition
