@@ -86,7 +86,7 @@ int main(void)
 	//main variables
 	uint8_t prev_rows[64];
 	uint8_t prev_cols[64];				//history of previous locations head has been
-	uint8_t length = 3;					//length of snake
+	uint8_t length = 1;					//length of snake
 	uint8_t food_pos[2] = {0x07,0x08};	//stores where the food will go first element col, second row
 	
 	//starting position
@@ -198,7 +198,10 @@ void store_moves(uint8_t* col,uint8_t* row ,uint8_t len)
 void make_food(uint8_t *food, uint8_t *col, uint8_t *row, uint8_t *len_ptr)
 {
 		(*len_ptr)++;							//increase length of snake
-		uint8_t new_col = rand();			//start with random number
+		//col + len -1 = col + len -2
+		*(col-1+*(len_ptr)) = *(col-2+*(len_ptr));	//copy previous last value into new last *len_ptr will always be >1
+		
+		uint8_t new_col = rand();					//start with random number
 		new_col = new_col >> 5;					//shrink to three bit number
 		if (new_col == 0){						//convert 0 to last col register
 			new_col = 0x08;
