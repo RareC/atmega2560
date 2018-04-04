@@ -46,6 +46,9 @@ int main(void)
 		
     }
 } 
+
+/* Since we are using 4 bit mode, data needs to be sent 4 bits at a time
+The (E)nable pin needs to be toggled after each nibble being sent to signal there's new data*/
 void LCD_send_data(uint8_t data){
 	PORTG |= E;
 	PORTC = data >> 4;			//send top nibble
@@ -57,6 +60,7 @@ void LCD_send_data(uint8_t data){
 	_delay_us(37);
 }
 
+// The only difference between sending commands and data is the state of the RS pin 
 void LCD_write_cmd(uint8_t command){
 	PORTG &= ~RS;				//sending commands so set RS low
 	LCD_send_data(command);	
@@ -67,6 +71,8 @@ void LCD_write_char(uint8_t character){
 	LCD_send_data(character);	
 }
 
+/* Words are sent as a sequence of chars
+The DDRAM pointer is automatically incremented by 1 after each write so we only worry about sending chars */
 void LCD_write_word(uint8_t *word){
 	uint8_t i = 0;
 	while(*(word+i)){
@@ -75,6 +81,7 @@ void LCD_write_word(uint8_t *word){
 	}
 }
 
+// Allows beginning writing at any position on the screen
 void LCD_move_curs(uint8_t line, uint8_t offset){
 	if (line == 1){
 		LCD_write_cmd(0x80 + offset);	//set cursor to start of top line plus any character offset
@@ -84,6 +91,8 @@ void LCD_move_curs(uint8_t line, uint8_t offset){
 	}
 }
 
+/* Has a longer execution time than the other instructions so cannot use the default command function 
+Since we don't poll the busy flag, we just wait the maximum amount of time instead*/
 void LCD_clear_display(){				//needs own function due to longer execution time
 	PORTG &= ~RS;						//sending command so set RS low
 	PORTG |= E;
@@ -96,6 +105,8 @@ void LCD_clear_display(){				//needs own function due to longer execution time
 	_delay_ms(2);
 }
 
+/*Useful if you only want to clear a single line and preserve the other
+Has an execution time of ~600uS so might be faster to use this twice instead of clear display?*/
 void LCD_clear_line(uint8_t line){		//clears a single line instead of the entire display
 	LCD_move_curs(line,0);
 	for (uint8_t i =0; i < 16; i++){
@@ -103,7 +114,8 @@ void LCD_clear_line(uint8_t line){		//clears a single line instead of the entire
 	}
 }
 
-void LCD_vintage_write(uint8_t *word){	//same as LCD_write_word but with cursor blinking like old style terminal
+//Displays text on the screen as if it's being types on an old terminal
+void LCD_vintage_write(uint8_t *word){
 	LCD_write_cmd(0x0F);				//turn on blinking cursor
 	uint8_t i = 0;
 	while(*(word+i)){
@@ -114,17 +126,18 @@ void LCD_vintage_write(uint8_t *word){	//same as LCD_write_word but with cursor 
 	LCD_write_cmd(0x0C);				//disable blinking cursor
 }
 
+//itoa only takes values <=int as argument so cannot use anything longer than 2 bytes on AVR 
 void LCD_disp_num(int val){
 	uint8_t buff [6];					//max value of 2 bytes has 5 digits plus 1 for sign
 	itoa(val,buff,10);
 	LCD_write_word(buff);
 }
 
+//Scrolls text from right to left across a given line
 void LCD_scroll_right(uint8_t *word,uint8_t line){			
 	uint8_t start_pos = 16;
 	LCD_move_curs(line,start_pos-1);
 	while(start_pos){
-		//LCD_clear_line(line);
 		LCD_write_word(word);
 		LCD_clear_trail();
 		start_pos--;
@@ -133,14 +146,16 @@ void LCD_scroll_right(uint8_t *word,uint8_t line){
 	}	
 }
 
+//For use by scroll functions, can't imagine a use outside of this
 void LCD_clear_trail(){						//clear trailing characters with scrolling text
-	for(uint8_t i = 0; i < 16; i++){		//line 2 DRAM addresses will never be reached so okay
+	for(uint8_t i = 0; i < 16; i++){		//Will not overflow onto other line regardless of cursor position so this covers everything
 		LCD_write_char(0x11);
 	}	
 }
 
+//LCD driver used is Hitachi chip set compatible so this follows their initialisation sequence
 void LCD_init(){
-	_delay_ms(15);						//wait as per spec
+	_delay_ms(15);
 	PORTG &= ~E;						//ensure E low
 	PORTG &= ~RS;						//sending commands so set RS low
 	for(uint8_t i = 0; i < 3; i++){		//send function set command three times to initialise LCD
