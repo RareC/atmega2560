@@ -116,6 +116,8 @@ void LCD_clear_trail(){						//clear trailing characters with scrolling text
 
 //LCD driver used is Hitachi chip set compatible so this follows their initialisation sequence
 void LCD_init(){
+	DDRC |= 0x0F;						//set bottom half of port C as output
+	DDRG |= 0x03;						//set bottom three bits of port G as output
 	_delay_ms(15);
 	PORTG &= ~E;						//ensure E low
 	PORTG &= ~RS;						//sending commands so set RS low
