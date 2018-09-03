@@ -20,9 +20,9 @@ Hardware Pin Connections: PB1 = SCK, PB2 = MOSI, PB4 = CS, PF0 = analogue input
 
 void init_adc()
 {
-	ADMUX |= (1<<REFS1)|(1<<REFS0)|(1<<ADLAR);								//use internal 2.56V ref & left adjust result, use ADC0
-	ADCSRA |= (1<<ADEN)|(1 << ADATE)|(1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0);      //enable ADC, put into free running mode & set ADC freq pre-scaler = F_CPU/128
-	ADCSRA |= (1<<ADSC);													//begin conversions
+	ADMUX |= (1<<REFS0)|(1<<ADLAR);										//use internal 2.56V ref & left adjust result, use ADC0
+	ADCSRA |= (1<<ADEN)|(1 << ADATE)|(1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0)|(1<<ADSC);   //enable ADC, put into free running mode & set ADC freq pre-scaler = F_CPU/128. Begin conversions
+
 }
 
 
